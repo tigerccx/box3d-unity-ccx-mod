@@ -34,8 +34,8 @@ namespace Box3D
         public B3Matrix3 GetLocalRotationalInertia() => UnsafeBindings.b3Body_GetLocalRotationalInertia(Id);
         public float GetInverseMass() => UnsafeBindings.b3Body_GetInverseMass(Id);
         public B3Matrix3 GetWorldInverseRotationalInertia() => UnsafeBindings.b3Body_GetWorldInverseRotationalInertia(Id);
-        public Unity.Mathematics.float3 GetLocalCenterOfMass() => UnsafeBindings.b3Body_GetLocalCenterOfMass(Id);
-        public B3Pos GetWorldCenterOfMass() => UnsafeBindings.b3Body_GetWorldCenterOfMass(Id);
+        public Unity.Mathematics.float3 GetLocalCenter() => UnsafeBindings.b3Body_GetLocalCenter(Id);
+        public B3Pos GetWorldCenter() => UnsafeBindings.b3Body_GetWorldCenter(Id);
         public void SetMassData(MassData massData) => UnsafeBindings.b3Body_SetMassData(Id, massData);
         public MassData GetMassData() => UnsafeBindings.b3Body_GetMassData(Id);
         public void ApplyMassFromShapes() => UnsafeBindings.b3Body_ApplyMassFromShapes(Id);
@@ -56,9 +56,11 @@ namespace Box3D
         public MotionLocks GetMotionLocks() => UnsafeBindings.b3Body_GetMotionLocks(Id);
         public void SetBullet(bool flag) => UnsafeBindings.b3Body_SetBullet(Id, flag);
         public bool IsBullet() => UnsafeBindings.b3Body_IsBullet(Id);
+        public void AllowFastRotation(bool flag) => UnsafeBindings.b3Body_AllowFastRotation(Id, flag);
+        public bool IsFastRotationAllowed() => UnsafeBindings.b3Body_IsFastRotationAllowed(Id);
         public void EnableContactRecycling(bool flag) => UnsafeBindings.b3Body_EnableContactRecycling(Id, flag);
         public bool IsContactRecyclingEnabled() => UnsafeBindings.b3Body_IsContactRecyclingEnabled(Id);
-        public void EnableHitEvents(bool enableHitEvents) => UnsafeBindings.b3Body_EnableHitEvents(Id, enableHitEvents);
+        public void EnableHitEvents(bool flag) => UnsafeBindings.b3Body_EnableHitEvents(Id, flag);
         public WorldId GetWorld() => UnsafeBindings.b3Body_GetWorld(Id);
         public int GetContactCapacity() => UnsafeBindings.b3Body_GetContactCapacity(Id);
         public B3Aabb ComputeAABB() => UnsafeBindings.b3Body_ComputeAABB(Id);

@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using NUnit.Framework;
 using Unity.Collections.LowLevel.Unsafe;
 
@@ -52,7 +53,7 @@ namespace Box3D.Tests
 #else
             AssertSize<B3Pos>(12);
             AssertSize<B3WorldTransform>(28);
-            AssertSize<BodyDef>(104);
+            AssertSize<BodyDef>(112);
             AssertSize<BodyMoveEvent>(48);
             AssertSize<RayResult>(64);
             AssertSize<ExplosionDef>(32);
@@ -68,7 +69,19 @@ namespace Box3D.Tests
             AssertSize<CollisionFilter>(24);
             AssertSize<SurfaceMaterial>(40);
             AssertSize<WorldDef>(144);
-            AssertSize<ShapeDef>(112);
+            AssertSize<ShapeDef>(120);
+        }
+
+        [Test]
+        public void ShapeDefFieldOffsets()
+        {
+            Assert.AreEqual(0, Marshal.OffsetOf<ShapeDef>(nameof(ShapeDef.Name)).ToInt32());
+            Assert.AreEqual(8, Marshal.OffsetOf<ShapeDef>(nameof(ShapeDef.UserData)).ToInt32());
+            Assert.AreEqual(16, Marshal.OffsetOf<ShapeDef>(nameof(ShapeDef.Materials)).ToInt32());
+            Assert.AreEqual(32, Marshal.OffsetOf<ShapeDef>(nameof(ShapeDef.BaseMaterial)).ToInt32());
+            Assert.AreEqual(72, Marshal.OffsetOf<ShapeDef>(nameof(ShapeDef.Density)).ToInt32());
+            Assert.AreEqual(80, Marshal.OffsetOf<ShapeDef>(nameof(ShapeDef.Filter)).ToInt32());
+            Assert.AreEqual(112, Marshal.OffsetOf<ShapeDef>(nameof(ShapeDef.EnableSpeculativeContact)).ToInt32());
         }
 
         [Test]

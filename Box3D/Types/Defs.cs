@@ -85,7 +85,7 @@ namespace Box3D
         public static WorldDef Default => UnsafeBindings.b3DefaultWorldDef();
     }
 
-    /// <summary>Mirrors native b3BodyDef (104 bytes on x64). Create via <see cref="Default"/> only.</summary>
+    /// <summary>Mirrors native b3BodyDef (112 bytes on x64 in single precision). Create via <see cref="Default"/> only.</summary>
     [StructLayout(LayoutKind.Sequential)]
     public struct BodyDef
     {
@@ -112,10 +112,11 @@ namespace Box3D
         public static BodyDef Default => UnsafeBindings.b3DefaultBodyDef();
     }
 
-    /// <summary>Mirrors native b3ShapeDef (112 bytes on x64). Create via <see cref="Default"/> only.</summary>
+    /// <summary>Mirrors native b3ShapeDef (120 bytes on x64). Create via <see cref="Default"/> only.</summary>
     [StructLayout(LayoutKind.Sequential)]
     public struct ShapeDef
     {
+        public IntPtr Name;
         public IntPtr UserData;
         public IntPtr Materials;
         public int MaterialCount;
@@ -131,6 +132,7 @@ namespace Box3D
         public NativeBool EnablePreSolveEvents;
         public NativeBool InvokeContactCreation;
         public NativeBool UpdateBodyMass;
+        public NativeBool EnableSpeculativeContact;
         internal int InternalValue;
 
         public static ShapeDef Default => UnsafeBindings.b3DefaultShapeDef();

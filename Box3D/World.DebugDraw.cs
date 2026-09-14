@@ -20,7 +20,7 @@ namespace Box3D
         Contacts = 1 << 5,
         ContactNormals = 1 << 6,
         ContactForces = 1 << 7,
-        FrictionForces = 1 << 8,
+        //FrictionForces = 1 << 8,
         Islands = 1 << 9,
         GraphColors = 1 << 10,
         Default = Shapes | Joints,
@@ -63,7 +63,7 @@ namespace Box3D
             draw.drawContacts = (flags & DebugDrawFlags.Contacts) != 0;
             draw.drawContactNormals = (flags & DebugDrawFlags.ContactNormals) != 0;
             draw.drawContactForces = (flags & DebugDrawFlags.ContactForces) != 0;
-            draw.drawFrictionForces = (flags & DebugDrawFlags.FrictionForces) != 0;
+            //draw.drawFrictionForces = (flags & DebugDrawFlags.FrictionForces) != 0;
             draw.drawIslands = (flags & DebugDrawFlags.Islands) != 0;
             draw.drawGraphColors = (flags & DebugDrawFlags.GraphColors) != 0;
 

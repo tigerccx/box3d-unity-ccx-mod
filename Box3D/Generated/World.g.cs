@@ -34,8 +34,6 @@ namespace Box3D
         public void DumpShapeBounds(BodyType type) => UnsafeBindings.b3World_DumpShapeBounds(Id, type);
         public void RebuildStaticTree() => UnsafeBindings.b3World_RebuildStaticTree(Id);
         public void EnableSpeculative(bool flag) => UnsafeBindings.b3World_EnableSpeculative(Id, flag);
-        public void DumpAwake() => UnsafeBindings.b3World_DumpAwake(Id);
-        public void Dump() => UnsafeBindings.b3World_Dump(Id);
         public void StopRecording() => UnsafeBindings.b3World_StopRecording(Id);
     }
 }

@@ -173,7 +173,7 @@ namespace Box3D
         {
             if (!compound.IsCreated) throw new ArgumentException("Compound is not created (default or already destroyed)", nameof(compound));
             ShapeDef localDef = def;
-            return new Shape { Id = UnsafeBindings.b3CreateCompoundShape(Id, &localDef, (b3CompoundData*)compound.Data) };
+            return new Shape { Id = UnsafeBindings.b3CreateBakedCompoundShape(Id, &localDef, (b3CompoundData*)compound.Data) };
         }
 
         public bool Equals(Body other)
