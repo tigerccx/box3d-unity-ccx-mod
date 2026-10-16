@@ -1627,6 +1627,9 @@ namespace Box3D
         public void* context;
     }
 
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    internal unsafe delegate void b3PreIntegratePositionsCallback([NativeTypeName("b3BodyId")] BodyId bodyId, [NativeTypeName("b3Vec3 *")] Unity.Mathematics.float3* linearVelocity, [NativeTypeName("b3Vec3 *")] Unity.Mathematics.float3* angularVelocity, [NativeTypeName("b3Vec3 *")] Unity.Mathematics.float3* deltaPosition, [NativeTypeName("b3Quat *")] Unity.Mathematics.quaternion* deltaRotation, float timeStep);
+
     internal partial struct b3Recording
     {
     }
@@ -3414,6 +3417,9 @@ namespace Box3D
 
         [DllImport(Box3DLibrary.Name, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         public static extern b3ContactData b3Contact_GetData([NativeTypeName("b3ContactId")] ContactId contactId);
+
+        [DllImport(Box3DLibrary.Name, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        public static extern void b3World_SetPreIntegratePositionsCallback([NativeTypeName("b3WorldId")] WorldId worldId, [NativeTypeName("b3PreIntegratePositionsCallback *")] IntPtr callback);
 
         [DllImport(Box3DLibrary.Name, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         public static extern b3DynamicTree b3DynamicTree_Create(int proxyCapacity);

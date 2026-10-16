@@ -35,5 +35,6 @@ namespace Box3D
         public void RebuildStaticTree() => UnsafeBindings.b3World_RebuildStaticTree(Id);
         public void EnableSpeculative(bool flag) => UnsafeBindings.b3World_EnableSpeculative(Id, flag);
         public void StopRecording() => UnsafeBindings.b3World_StopRecording(Id);
+        public void SetPreIntegratePositionsCallback(IntPtr callback) => UnsafeBindings.b3World_SetPreIntegratePositionsCallback(Id, callback);
     }
 }

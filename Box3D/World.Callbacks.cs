@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using AOT;
 using Unity.Mathematics;
@@ -6,6 +7,13 @@ using UnityEngine;
 
 namespace Box3D
 {
+    //CCX_MOD BEGIN(Declare managed per-body pre-integrate handler)
+    /// <summary>Customizes one body's solver state before position integration. This currently runs
+    /// synchronously on the solver orchestrator thread; do not access Unity APIs from this handler.</summary>
+    public delegate void PreIntegratePositionsHandler(Body body, ref float3 linearVelocity, ref float3 angularVelocity,
+        ref float3 deltaPosition, ref quaternion deltaRotation, float timeStep);
+    //CCX_MOD END(Declare managed per-body pre-integrate handler)
+
     /// <summary>Decides if two shapes should collide. Both shapes have EnableCustomFiltering.
     /// THREAD SAFETY: invoked from worker threads during Step when the world is multithreaded —
     /// must be pure: no Unity API, no world mutation, no allocation.</summary>
@@ -154,6 +162,9 @@ namespace Box3D
         {
             CustomFilters[Id.Index1] = null;
             PreSolves[Id.Index1] = null;
+            //CCX_MOD BEGIN(Clear per-body pre-integrate handlers on world destruction)
+            Box3DDispatcher.ClearWorld(Id);
+            //CCX_MOD END(Clear per-body pre-integrate handlers on world destruction)
             DebugDrawBridge.SetBridgeOwned(Id, false);
             // The mixers are global (see SetFrictionCallback) — clear when the world that
             // registered one dies, so its delegate (and closure) isn't rooted forever. Other
@@ -163,4 +174,78 @@ namespace Box3D
             if (_restitutionMix != null && _restitutionMixOwner.Equals(Id)) _restitutionMix = null;
         }
     }
+
+    //CCX_MOD BEGIN(Add BodyId-based pre-integrate callback dispatcher)
+    public static unsafe class Box3DDispatcher
+    {
+        private static readonly Dictionary<BodyId, PreIntegratePositionsHandler> Handlers = new Dictionary<BodyId, PreIntegratePositionsHandler>();
+        private static readonly b3PreIntegratePositionsCallback NativeCallback = OnPreIntegratePositions;
+        private static readonly IntPtr NativeCallbackPtr = Marshal.GetFunctionPointerForDelegate(NativeCallback);
+
+        internal static void RegisterWorld(World world)
+        {
+            if (!world.Id.IsNull)
+            {
+                UnsafeBindings.b3World_SetPreIntegratePositionsCallback(world.Id, NativeCallbackPtr);
+            }
+        }
+
+        /// <summary>Registers custom pre-integration logic for a body. Pass null to unregister.
+        /// Do not change registrations while the owning world is stepping.</summary>
+        public static void Register(Body body, PreIntegratePositionsHandler handler)
+        {
+            if (handler == null)
+            {
+                Handlers.Remove(body.Id);
+                return;
+            }
+
+            if (!body.IsValid)
+            {
+                throw new ArgumentException("Cannot register a callback for an invalid body.", nameof(body));
+            }
+
+            Handlers[body.Id] = handler;
+        }
+
+        internal static void Unregister(BodyId bodyId)
+        {
+            Handlers.Remove(bodyId);
+        }
+
+        internal static void ClearWorld(WorldId worldId)
+        {
+            List<BodyId> removedIds = null;
+            foreach (BodyId bodyId in Handlers.Keys)
+            {
+                if (bodyId.World0 == worldId.Index1 - 1)
+                {
+                    if (removedIds == null) removedIds = new List<BodyId>();
+                    removedIds.Add(bodyId);
+                }
+            }
+
+            if (removedIds == null) return;
+            foreach (BodyId bodyId in removedIds) Handlers.Remove(bodyId);
+        }
+
+        [MonoPInvokeCallback(typeof(b3PreIntegratePositionsCallback))]
+        private static void OnPreIntegratePositions(BodyId bodyId, float3* linearVelocity, float3* angularVelocity,
+            float3* deltaPosition, quaternion* deltaRotation, float timeStep)
+        {
+            if (!Handlers.TryGetValue(bodyId, out PreIntegratePositionsHandler handler)) return;
+
+            try
+            {
+                // TODO: Implement main-thread dispatch for pre-integrate handlers.
+                handler(new Body(bodyId), ref *linearVelocity, ref *angularVelocity, ref *deltaPosition,
+                    ref *deltaRotation, timeStep);
+            }
+            catch (Exception exception)
+            {
+                Debug.LogException(exception);
+            }
+        }
+    }
+    //CCX_MOD END(Add BodyId-based pre-integrate callback dispatcher)
 }

@@ -19,6 +19,9 @@ namespace Box3D
         public void Destroy()
         {
             if (Id.IsNull) return; // double-destroy would pass a null id into unvalidated native paths
+            //CCX_MOD BEGIN(Remove managed pre-integrate handler when body is destroyed)
+            Box3DDispatcher.Unregister(Id);
+            //CCX_MOD END(Remove managed pre-integrate handler when body is destroyed)
             UnsafeBindings.b3DestroyBody(Id);
             Id = default;
         }
@@ -200,5 +203,11 @@ namespace Box3D
             return !left.Equals(right);
         }
 
+        //CCX_MOD BEGIN(Add pre-integrate callback registration utility function)
+        public void RegisterPreIntegratePositionsHandler(PreIntegratePositionsHandler handler)
+        {
+            Box3DDispatcher.Register(this, handler);
+        }
+        //CCX_MOD END(Add pre-integrate callback registration utility function)
     }
 }

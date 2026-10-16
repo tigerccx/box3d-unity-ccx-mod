@@ -30,6 +30,9 @@ namespace Box3D
             }
             var world = new World { Id = UnsafeBindings.b3CreateWorld(&local) };
             DebugDrawBridge.SetBridgeOwned(world.Id, bridgeOwnsDebugShapes);
+            //CCX_MOD BEGIN(Register static pre-integrate callback for new world)
+            Box3DDispatcher.RegisterWorld(world);
+            //CCX_MOD END(Register static pre-integrate callback for new world)
             return world;
         }
 

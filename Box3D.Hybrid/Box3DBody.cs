@@ -283,5 +283,12 @@ namespace Box3D.Hybrid
                 default: return Box3D.BodyType.Dynamic;
             }
         }
+
+        //CCX_MOD BEGIN(Add pre-integrate callback registration utility function)
+        public void RegisterPreIntegratePositionsHandler(PreIntegratePositionsHandler handler)
+        {
+            _body.RegisterPreIntegratePositionsHandler(handler);
+        }
+        //CCX_MOD END(Add pre-integrate callback registration utility function)
     }
 }
