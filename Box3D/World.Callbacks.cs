@@ -10,7 +10,7 @@ namespace Box3D
     //CCX_MOD BEGIN(Declare managed per-body pre-integrate handler)
     /// <summary>Customizes one body's solver state before position integration. This currently runs
     /// synchronously on the solver orchestrator thread; do not access Unity APIs from this handler.</summary>
-    public delegate void PreIntegratePositionsHandler(Body body, ref float3 linearVelocity, ref float3 angularVelocity,
+    public delegate void PreIntegratePositionsHandler(in Body body, ref float3 linearVelocity, ref float3 angularVelocity,
         ref float3 deltaPosition, ref quaternion deltaRotation, float timeStep);
     //CCX_MOD END(Declare managed per-body pre-integrate handler)
 
