@@ -784,5 +784,84 @@ namespace Box3D.Hybrid
             _reusableQueryHitCount = _reusableOverlapShapeCount = 0;
         }
         //CCX_MOD END(Reuse world-owned arrays for component query results)
+
+        //CCX_MOD BEGIN(Expose nearest-hit ray and convex sweep queries with Unity results)
+        /// <summary>Returns the closest ray hit without allocating or overwriting shared query buffers.
+        /// translation is the complete displacement, not a normalized direction. hit is default on a miss.</summary>
+        public bool Query_CastRayClosest(Vector3 origin, Vector3 translation, LayerMask layerMask,
+            out QueryHit hit, int queryLayer = -1)
+            => Query_CastRayClosest(origin, translation, layerMask, out hit, out _, queryLayer);
+
+        /// <summary>Also reports broadphase work: treeStats.x = node visits, y = leaf visits.</summary>
+        public bool Query_CastRayClosest(Vector3 origin, Vector3 translation, LayerMask layerMask,
+            out QueryHit hit, out Vector2Int treeStats, int queryLayer = -1)
+        {
+            RayResult result = _world.CastRayClosest(origin, translation, BuildQueryFilter(layerMask, queryLayer));
+            treeStats = new Vector2Int(result.NodeVisits, result.LeafVisits);
+            hit = result.Hit ? ToClosestQueryHit(result, translation.magnitude) : default;
+            return result.Hit;
+        }
+
+        /// <summary>Returns the closest convex sweep hit without an all-hit buffer. Proxy points are
+        /// offsets from origin; translation is the complete displacement. hit is default on a miss.</summary>
+        public bool Query_CastShapeClosest(Vector3 origin, ReadOnlySpan<Vector3> proxyPoints, float proxyRadius,
+            Vector3 translation, LayerMask layerMask, out QueryHit hit, int queryLayer = -1)
+            => Query_CastShapeClosest(origin, proxyPoints, proxyRadius, translation, layerMask, out hit, out _, queryLayer);
+
+        /// <summary>Also reports broadphase work: treeStats.x = node visits, y = leaf visits.</summary>
+        public bool Query_CastShapeClosest(Vector3 origin, ReadOnlySpan<Vector3> proxyPoints, float proxyRadius,
+            Vector3 translation, LayerMask layerMask, out QueryHit hit, out Vector2Int treeStats, int queryLayer = -1)
+        {
+            QueryFilter filter = BuildQueryFilter(layerMask, queryLayer);
+            ValidateQueryProxy(proxyPoints, proxyRadius);
+            Unity.Mathematics.float3[] rentedPoints = null;
+            Span<Unity.Mathematics.float3> points = proxyPoints.Length <= 128
+                ? stackalloc Unity.Mathematics.float3[proxyPoints.Length]
+                : (rentedPoints = System.Buffers.ArrayPool<Unity.Mathematics.float3>.Shared.Rent(proxyPoints.Length)).AsSpan(0, proxyPoints.Length);
+            try
+            {
+                for (int i = 0; i < points.Length; i++) points[i] = proxyPoints[i];
+                RayResult result = _world.CastShapeClosest(origin, points, proxyRadius, translation, filter);
+                treeStats = new Vector2Int(result.NodeVisits, result.LeafVisits);
+                hit = result.Hit ? ToClosestQueryHit(result, translation.magnitude) : default;
+                return result.Hit;
+            }
+            finally
+            {
+                if (rentedPoints != null) System.Buffers.ArrayPool<Unity.Mathematics.float3>.Shared.Return(rentedPoints);
+            }
+        }
+
+        /// <summary>Returns the closest sphere sweep hit without an all-hit buffer. translation is
+        /// the complete displacement. Initial overlaps follow native cast semantics.</summary>
+        public bool Query_CastSphereClosest(Vector3 origin, float radius, Vector3 translation, LayerMask layerMask,
+            out QueryHit hit, int queryLayer = -1)
+            => Query_CastSphereClosest(origin, radius, translation, layerMask, out hit, out _, queryLayer);
+
+        /// <summary>Also reports broadphase work: treeStats.x = node visits, y = leaf visits.</summary>
+        public bool Query_CastSphereClosest(Vector3 origin, float radius, Vector3 translation, LayerMask layerMask,
+            out QueryHit hit, out Vector2Int treeStats, int queryLayer = -1)
+        {
+            ReadOnlySpan<Vector3> points = stackalloc Vector3[] { Vector3.zero };
+            return Query_CastShapeClosest(origin, points, radius, translation, layerMask, out hit, out treeStats, queryLayer);
+        }
+
+        private QueryHit ToClosestQueryHit(RayResult result, float castLength)
+        {
+            TryGetShape(result.ShapeId, out Box3DShape component);
+            return new QueryHit
+            {
+                shape = component,
+                shapeId = result.ShapeId.ToUInt64(),
+                point = (Vector3)result.Point,
+                normal = result.Normal,
+                fraction = result.Fraction,
+                distance = result.Fraction * castLength,
+                userMaterialId = result.UserMaterialId,
+                triangleIndex = result.TriangleIndex,
+                childIndex = result.ChildIndex,
+            };
+        }
+        //CCX_MOD END(Expose nearest-hit ray and convex sweep queries with Unity results)
     }
 }

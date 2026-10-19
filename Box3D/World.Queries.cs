@@ -139,5 +139,50 @@ namespace Box3D
                 return ctx.Count;
             }
         }
+
+        //CCX_MOD BEGIN(Collect the nearest convex sweep hit by clipping the native query)
+        private static readonly b3CastResultFcn ClosestShapeCollectorDelegate = ClosestShapeCollector;
+        private static readonly IntPtr ClosestShapeCollectorPtr = Marshal.GetFunctionPointerForDelegate(ClosestShapeCollectorDelegate);
+
+        [MonoPInvokeCallback(typeof(b3CastResultFcn))]
+        private static float ClosestShapeCollector(ShapeId shapeId, B3Pos point, float3 normal,
+            float fraction, ulong userMaterialId, int triangleIndex, int childIndex, void* context)
+        {
+            var result = (RayResult*)context;
+            if (!result->Hit || fraction < result->Fraction)
+            {
+                result->ShapeId = shapeId;
+                result->Point = point;
+                result->Normal = normal;
+                result->Fraction = fraction;
+                result->UserMaterialId = userMaterialId;
+                result->TriangleIndex = triangleIndex;
+                result->ChildIndex = childIndex;
+                result->Hit = true;
+            }
+            // Continue only within the best fraction found so far; zero is already nearest possible.
+            return result->Fraction;
+        }
+
+        /// <summary>Sweeps a convex proxy and returns its nearest reported hit, independently of
+        /// broadphase traversal order. No all-hit buffer is used. Initial overlaps follow native cast semantics.</summary>
+        public RayResult CastShapeClosest(B3Pos origin, ReadOnlySpan<float3> proxyPoints, float proxyRadius,
+            float3 translation, QueryFilter filter)
+        {
+            if (proxyPoints.IsEmpty) throw new ArgumentException("proxy needs at least one point", nameof(proxyPoints));
+            if (float.IsNaN(proxyRadius) || float.IsInfinity(proxyRadius) || proxyRadius < 0f)
+                throw new ArgumentOutOfRangeException(nameof(proxyRadius));
+            fixed (float3* points = proxyPoints)
+            {
+                var proxy = new b3ShapeProxy { points = points, count = proxyPoints.Length, radius = proxyRadius };
+                var result = new RayResult { Fraction = 1f, TriangleIndex = -1, ChildIndex = -1 };
+                b3TreeStats stats = UnsafeBindings.b3World_CastShape(Id, origin, &proxy, translation,
+                    filter, ClosestShapeCollectorPtr, &result);
+                result.NodeVisits = stats.nodeVisits;
+                result.LeafVisits = stats.leafVisits;
+                return result;
+            }
+        }
+        //CCX_MOD END(Collect the nearest convex sweep hit by clipping the native query)
     }
 }
