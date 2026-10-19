@@ -8,6 +8,9 @@ namespace Box3D.Hybrid.Editor
     /// and a Contact Inspector — the body's live contacts (other body, points, separation, impulse)
     /// listed in the Inspector and drawn in the Scene view (points + normals, colored by impulse).</summary>
     [CustomEditor(typeof(Box3DBody))]
+    //CCX_MOD BEGIN(Enable multi-object editing for Body inspectors)
+    [CanEditMultipleObjects]
+    //CCX_MOD END(Enable multi-object editing for Body inspectors)
     public class Box3DBodyEditor : UnityEditor.Editor
     {
         // Impulse (N·s) that maps to a full-red / long-normal contact; contacts above this saturate.
@@ -22,6 +25,16 @@ namespace Box3D.Hybrid.Editor
         private ContactData[] _contacts;
         private Box3DBody[] _sceneBodies;
         private int _snapshotFrame = -1;
+        //CCX_MOD BEGIN(Cache Body inspector multi-selection state)
+        private SerializedObject _serializedObject;
+        private bool _editingMultipleObjects;
+
+        private void OnEnable()
+        {
+            _serializedObject = serializedObject;
+            _editingMultipleObjects = _serializedObject.isEditingMultipleObjects;
+        }
+        //CCX_MOD END(Cache Body inspector multi-selection state)
 
         private ContactData[] ContactsThisFrame(Body body)
         {
@@ -43,7 +56,9 @@ namespace Box3D.Hybrid.Editor
         {
             DrawDefaultInspector();
 
-            if (!Application.isPlaying) return;
+            //CCX_MOD BEGIN(Show live Body diagnostics only for a single selected Body)
+            if (!Application.isPlaying || targets.Length != 1) return;
+            //CCX_MOD END(Show live Body diagnostics only for a single selected Body)
 
             var component = (Box3DBody)target;
             Body body = component.Body;
@@ -88,7 +103,9 @@ namespace Box3D.Hybrid.Editor
 
         private void OnSceneGUI()
         {
-            if (!Application.isPlaying || !_showContacts || !_drawInScene) return;
+            //CCX_MOD BEGIN(Skip Body contact handles during multi-object editing)
+            if (!Application.isPlaying || _editingMultipleObjects || !_showContacts || !_drawInScene) return;
+            //CCX_MOD END(Skip Body contact handles during multi-object editing)
             // Handles output only matters on Repaint; without this gate every scene-view event
             // (layout, mouse moves — 2-6 per frame) re-snapshots contacts and P/Invokes.
             if (Event.current.type != EventType.Repaint) return;

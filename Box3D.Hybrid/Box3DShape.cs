@@ -25,6 +25,107 @@ namespace Box3D.Hybrid
         [SerializeField, Tooltip("Local offset of the shape from the body origin.")]
         private Vector3 Center = Vector3.zero;
 
+        //CCX_MOD BEGIN(Trigger and collision-layer settings)
+        [SerializeField, Tooltip("Detect overlaps without a collision response.")]
+        private bool IsTrigger;
+        [SerializeField, Tooltip("Generate sensor overlap events, including when entering another trigger.")]
+        private bool EnableTriggerEvents = true;
+        [SerializeField, Tooltip("Replace this shape's mask from the Physics Layer Collision Matrix with Collision Mask.")]
+        private bool OverrideCollisionMask;
+        [SerializeField, Tooltip("Used only when Override Collision Mask is enabled. Both shapes must accept each other.")]
+        private LayerMask CollisionMask = ~0;
+
+        public bool isTrigger
+        {
+            get => IsTrigger;
+            set
+            {
+                bool previous = IsTrigger;
+                IsTrigger = value;
+                try { RefreshCollisionSettings(); }
+                catch { IsTrigger = previous; throw; }
+            }
+        }
+        public bool enableTriggerEvents
+        {
+            get => EnableTriggerEvents;
+            set { EnableTriggerEvents = value; RefreshCollisionSettings(); }
+        }
+        /// <summary>Whether collisionMask replaces this shape's mask from the global layer matrix.</summary>
+        public bool overrideCollisionMask
+        {
+            get => OverrideCollisionMask;
+            set { OverrideCollisionMask = value; RefreshCollisionSettings(); }
+        }
+        /// <summary>Custom mask used only while overrideCollisionMask is true.</summary>
+        public LayerMask collisionMask
+        {
+            get => CollisionMask;
+            set { CollisionMask = value; RefreshCollisionSettings(); }
+        }
+        private CollisionFilter BuildCollisionFilter()
+        {
+            int layer = gameObject.layer;
+            var filter = CollisionFilter.Default;
+            filter.CategoryBits = 1UL << layer;
+            filter.MaskBits = OverrideCollisionMask ? unchecked((uint)CollisionMask.value) : CollisionMaskForLayer(layer);
+            return filter;
+        }
+        /// <summary>Reapply after changing GameObject.layer or the global layer collision matrix.
+        /// Call outside World.Step, as with other collision mutations.</summary>
+        public void RefreshCollisionSettings()
+        {
+            if (!_shape.IsValid) return;
+            if (_shape.IsSensor() != IsTrigger) RebuildTriggerGeometry();
+            _shape.SetFilter(BuildCollisionFilter());
+            _shape.EnableSensorEvents(EnableTriggerEvents);
+        }
+        protected virtual void RebuildTriggerGeometry() => RecreatePrimitiveGeometry();
+
+        protected void ReplaceCollisionShape(Shape replacement)
+        {
+            if (!replacement.IsValid) throw new InvalidOperationException("Could not rebuild collision geometry.");
+            IntPtr userData = _shape.UserData;
+            bool hitEvents = _shape.AreHitEventsEnabled();
+            _shape.Destroy(updateBodyMass: true);
+            _shape = replacement;
+            //CCX_MOD BEGIN(Update world registration after replacing collision geometry)
+            UpdateShapeRegistration();
+            //CCX_MOD END(Update world registration after replacing collision geometry)
+            _shape.UserData = userData;
+            _shape.EnableHitEvents(hitEvents);
+            _shape.EnableSensorEvents(EnableTriggerEvents);
+        }
+        //CCX_MOD END(Trigger and collision-layer settings)
+
+        //CCX_MOD BEGIN(Expose Shape ownership and maintain world component registrations)
+        private Box3DWorld _registryWorld;
+        private ShapeId _registeredShapeId;
+        private Box3DBody _bodyComponent;
+
+        /// <summary>The native Shape; validate IsValid before using it after teardown.</summary>
+        public Shape Shape => _shape;
+        /// <summary>The native Body, including the private static body used by orphan shapes.</summary>
+        public Body Body => _attachedBody;
+        /// <summary>The component this shape was attached to, or null for an orphan static shape.</summary>
+        public Box3DBody AttachedBodyComponent => _bodyComponent;
+
+        private void UpdateShapeRegistration()
+        {
+            UnregisterFromWorld();
+            if (!_registryWorld || !_shape.IsValid) return;
+            _registryWorld.RegisterShape(this);
+            _registeredShapeId = _shape.Id;
+        }
+
+        internal void UnregisterFromWorld()
+        {
+            if (_registryWorld && !_registeredShapeId.IsNull)
+                _registryWorld.UnregisterShape(_registeredShapeId, this);
+            _registeredShapeId = default;
+        }
+        //CCX_MOD END(Expose Shape ownership and maintain world component registrations)
+
         private Shape _shape;
         private Body _attachedBody; // the body this shape was created on (rebuilds recreate on it)
         private Body _ownBody; // only set when this shape has no Box3DBody and creates a static one
@@ -33,6 +134,45 @@ namespace Box3D.Hybrid
         private float3 _attachPosition;
         private quaternion _attachRotation = quaternion.identity;
         private float3 _attachScale = new float3(1f);
+
+        //CCX_MOD BEGIN(Unity Collider-style local center and geometry refresh)
+        /// <summary>Shape center in local space, before Transform scaling.</summary>
+        public Vector3 center
+        {
+            get => Center;
+            set
+            {
+                Vector3 previous = Center;
+                Center = value;
+                try { RefreshGeometry(); }
+                catch { Center = previous; throw; }
+            }
+        }
+
+        protected void RefreshGeometry()
+        {
+            if (!_shape.IsValid) return;
+            UpdateLiveGeometry();
+            _shape.SetDensity(Density, updateBodyMass: true);
+            if (_attachedBody.IsValid) _attachedBody.SetAwake(true);
+        }
+
+        // Used for primitive shapes whose managed binding has no in-place geometry setter.
+        protected void RecreatePrimitiveGeometry()
+        {
+            IntPtr userData = _shape.UserData;
+            bool hitEvents = _shape.AreHitEventsEnabled();
+            Shape replacement = CreateShape(_attachedBody, _attachPosition, _attachRotation, _attachScale);
+            if (!replacement.IsValid) throw new InvalidOperationException("Could not rebuild collision geometry.");
+            _shape.Destroy(updateBodyMass: true);
+            _shape = replacement;
+            //CCX_MOD BEGIN(Update world registration after replacing collision geometry)
+            UpdateShapeRegistration();
+            //CCX_MOD END(Update world registration after replacing collision geometry)
+            _shape.UserData = userData;
+            _shape.EnableHitEvents(hitEvents);
+        }
+        //CCX_MOD END(Unity Collider-style local center and geometry refresh)
 
         protected float3 LocalCenter => Center;
 
@@ -90,11 +230,17 @@ namespace Box3D.Hybrid
             def.Position = transform.position;
             def.Rotation = transform.rotation;
             _ownBody = world.World.CreateBody(def);
-            AttachTo(_ownBody, float3.zero, quaternion.identity, transform.lossyScale);
+            //CCX_MOD BEGIN(Register orphan Shapes with their owning world)
+            // AttachTo(_ownBody, float3.zero, quaternion.identity, transform.lossyScale);
+            InitializeAttachment(world, _ownBody, float3.zero, quaternion.identity, transform.lossyScale);
+            //CCX_MOD END(Register orphan Shapes with their owning world)
         }
 
         private void OnDestroy()
         {
+            //CCX_MOD BEGIN(Remove component registration before Shape destruction)
+            UnregisterFromWorld();
+            //CCX_MOD END(Remove component registration before Shape destruction)
             if (_ownBody.IsValid)
             {
                 // Orphan shape: the self-created static body is ours (destroying it destroys the shape).
@@ -123,8 +269,11 @@ namespace Box3D.Hybrid
             def.Density = Density;
             def.BaseMaterial.Friction = Friction;
             def.BaseMaterial.Restitution = Restitution;
-            def.Filter.CategoryBits = 1UL << gameObject.layer;
-            def.Filter.MaskBits = CollisionMaskForLayer(gameObject.layer);
+            //CCX_MOD BEGIN(Apply trigger and layer settings at shape creation)
+            def.IsSensor = IsTrigger;
+            def.EnableSensorEvents = EnableTriggerEvents;
+            def.Filter = BuildCollisionFilter();
+            //CCX_MOD END(Apply trigger and layer settings at shape creation)
             return def;
         }
 
@@ -140,18 +289,56 @@ namespace Box3D.Hybrid
             return mask;
         }
 
+        //CCX_MOD BEGIN(Attach Shapes through Box3DBody and register their world ownership)
+        // Original attachment implementation retained for comparison.
+        // /// <summary>Creates the native shape on the given body. <paramref name="localPosition"/> and
+        // /// <paramref name="localRotation"/> place the shape relative to the body's frame (identity
+        // /// for a shape on the body's own GameObject); <paramref name="scale"/> is the shape
+        // /// GameObject's lossy scale, baked into the dimensions.</summary>
+        // internal void AttachTo(Body body, float3 localPosition, quaternion localRotation, float3 scale,
+        //     IntPtr ownerData = default, bool enableHitEvents = false)
+        // {
+        //     _attachPosition = localPosition;
+        //     _attachRotation = localRotation;
+        //     _attachScale = scale;
+        //     _attachedBody = body;
+        //     _shape = CreateShape(body, localPosition, localRotation, scale);
+        //     if (!_shape.IsValid) return;
+        //
+        //     // The owning Box3DBody's GCHandle rides in shape userData, so a contact event maps its
+        //     // ShapeId straight back to the component — the shape-level twin of the body-move channel.
+        //     if (ownerData != IntPtr.Zero) _shape.UserData = ownerData;
+        //     if (enableHitEvents) _shape.EnableHitEvents(true);
+        // }
+        //
+
         /// <summary>Creates the native shape on the given body. <paramref name="localPosition"/> and
         /// <paramref name="localRotation"/> place the shape relative to the body's frame (identity
         /// for a shape on the body's own GameObject); <paramref name="scale"/> is the shape
         /// GameObject's lossy scale, baked into the dimensions.</summary>
-        internal void AttachTo(Body body, float3 localPosition, quaternion localRotation, float3 scale,
+        internal void AttachTo(Box3DBody bodyComponent, float3 localPosition, quaternion localRotation, float3 scale,
             IntPtr ownerData = default, bool enableHitEvents = false)
+        {
+            if (!bodyComponent) throw new ArgumentNullException(nameof(bodyComponent));
+            if (!bodyComponent.Body.IsValid)
+                throw new ArgumentException("Cannot attach a Shape to an invalid Body.", nameof(bodyComponent));
+            InitializeAttachment(bodyComponent.GetWorld(), bodyComponent.Body, localPosition, localRotation, scale,
+                ownerData, enableHitEvents, bodyComponent);
+        }
+
+        // Orphan shapes own a private native static body and have no Box3DBody component.
+        private void InitializeAttachment(Box3DWorld registryWorld, Body body, float3 localPosition, quaternion localRotation, float3 scale,
+            IntPtr ownerData = default, bool enableHitEvents = false, Box3DBody bodyComponent = null)
         {
             _attachPosition = localPosition;
             _attachRotation = localRotation;
             _attachScale = scale;
             _attachedBody = body;
+            UnregisterFromWorld();
+            _registryWorld = registryWorld;
+            _bodyComponent = bodyComponent;
             _shape = CreateShape(body, localPosition, localRotation, scale);
+            UpdateShapeRegistration();
             if (!_shape.IsValid) return;
 
             // The owning Box3DBody's GCHandle rides in shape userData, so a contact event maps its
@@ -159,6 +346,7 @@ namespace Box3D.Hybrid
             if (ownerData != IntPtr.Zero) _shape.UserData = ownerData;
             if (enableHitEvents) _shape.EnableHitEvents(true);
         }
+        //CCX_MOD END(Attach Shapes through Box3DBody and register their world ownership)
 
 #if UNITY_EDITOR
         private void OnValidate()
@@ -166,6 +354,9 @@ namespace Box3D.Hybrid
             // Push Inspector edits to the live shape during play. SetDensity with updateBodyMass
             // re-derives mass from the current geometry, so size edits update mass too.
             if (!Application.isPlaying || !_shape.IsValid) return;
+            //CCX_MOD BEGIN(Apply Inspector trigger and layer edits)
+            RefreshCollisionSettings();
+            //CCX_MOD END(Apply Inspector trigger and layer edits)
             _shape.SetFriction(Friction);
             _shape.SetRestitution(Restitution);
             UpdateLiveGeometry();
@@ -198,6 +389,9 @@ namespace Box3D.Hybrid
             _shape.Destroy(updateBodyMass: true); // re-derives mass over remaining + rebuilt shapes
             ReleaseRebuiltGeometry();
             _shape = rebuilt;
+            //CCX_MOD BEGIN(Update world registration after rebuilding collision geometry)
+            UpdateShapeRegistration();
+            //CCX_MOD END(Update world registration after rebuilding collision geometry)
             if (userData != IntPtr.Zero) _shape.UserData = userData;
             if (hitEvents) _shape.EnableHitEvents(true);
             return true;
@@ -256,6 +450,10 @@ namespace Box3D.Hybrid
             Gizmos.color = GizmoColor;
             Gizmos.matrix = Matrix4x4.TRS(transform.position, transform.rotation, Vector3.one);
         }
+
+        //CCX_MOD BEGIN(Shared selected-shape drawing entry point)
+        internal virtual void DrawSelectedShapeGizmo() { }
+        //CCX_MOD END(Shared selected-shape drawing entry point)
 
         protected float3 ScaledCenter => (float3)Center * (float3)transform.lossyScale;
     }

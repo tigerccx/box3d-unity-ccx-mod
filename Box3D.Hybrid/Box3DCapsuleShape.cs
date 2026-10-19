@@ -26,6 +26,44 @@ namespace Box3D.Hybrid
         [SerializeField, Tooltip("Axis the capsule runs along.")]
         private Box3DAxis Direction = Box3DAxis.Y;
 
+        //CCX_MOD BEGIN(Unity Collider-style shape properties)
+        public float radius
+        {
+            get => Radius;
+            set
+            {
+                float previous = Radius;
+                Radius = Mathf.Max(0f, value);
+                try { RefreshGeometry(); }
+                catch { Radius = previous; throw; }
+            }
+        }
+        public float height
+        {
+            get => Height;
+            set
+            {
+                float previous = Height;
+                Height = Mathf.Max(0f, value);
+                try { RefreshGeometry(); }
+                catch { Height = previous; throw; }
+            }
+        }
+        /// <summary>Capsule axis: 0 = X, 1 = Y, 2 = Z.</summary>
+        public int direction
+        {
+            get => (int)Direction;
+            set
+            {
+                if (value < 0 || value > 2) throw new System.ArgumentOutOfRangeException(nameof(value));
+                Box3DAxis previous = Direction;
+                Direction = (Box3DAxis)value;
+                try { RefreshGeometry(); }
+                catch { Direction = previous; throw; }
+            }
+        }
+        //CCX_MOD END(Unity Collider-style shape properties)
+
         protected override Shape CreateShape(Body body, float3 localPosition, quaternion localRotation, float3 scale)
         {
             Resolve(localPosition, localRotation, scale, out float3 center1, out float3 center2, out float radius);
@@ -66,7 +104,9 @@ namespace Box3D.Hybrid
             center2 = center + offset;
         }
 
-        private void OnDrawGizmosSelected()
+        //CCX_MOD BEGIN(Draw through the editor selection gizmo dispatcher)
+        internal override void DrawSelectedShapeGizmo()
+        //CCX_MOD END(Draw through the editor selection gizmo dispatcher)
         {
             SetGizmoFrame();
             // Gizmo draws in the shape's own frame, so local transform is identity here.

@@ -12,6 +12,20 @@ namespace Box3D.Hybrid
         [SerializeField, Min(0f), Tooltip("Sphere radius in local units.")]
         private float Radius = 0.5f;
 
+        //CCX_MOD BEGIN(Unity Collider-style shape properties)
+        public float radius
+        {
+            get => Radius;
+            set
+            {
+                float previous = Radius;
+                Radius = Mathf.Max(0f, value);
+                try { RefreshGeometry(); }
+                catch { Radius = previous; throw; }
+            }
+        }
+        //CCX_MOD END(Unity Collider-style shape properties)
+
         protected override Shape CreateShape(Body body, float3 localPosition, quaternion localRotation, float3 scale)
         {
             return body.CreateSphereShape(BuildDef(), BuildSphere(localPosition, localRotation, scale));
@@ -31,7 +45,9 @@ namespace Box3D.Hybrid
             };
         }
 
-        private void OnDrawGizmosSelected()
+        //CCX_MOD BEGIN(Draw through the editor selection gizmo dispatcher)
+        internal override void DrawSelectedShapeGizmo()
+        //CCX_MOD END(Draw through the editor selection gizmo dispatcher)
         {
             SetGizmoFrame();
             float radius = Radius * math.cmax(math.abs((float3)transform.lossyScale));

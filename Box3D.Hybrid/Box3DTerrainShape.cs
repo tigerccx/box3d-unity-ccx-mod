@@ -174,6 +174,17 @@ namespace Box3D.Hybrid
             return quads;
         }
 
+        //CCX_MOD BEGIN(Reuse height-field geometry when changing trigger state)
+        protected override void RebuildTriggerGeometry()
+        {
+            ShapeId previousId = _registeredId;
+            ReplaceCollisionShape(AttachedBody.CreateHeightFieldShape(BuildDef(), _field));
+            Registry.Remove(previousId);
+            _registeredId = LiveShape.Id;
+            Registry[_registeredId] = this;
+        }
+        //CCX_MOD END(Reuse height-field geometry when changing trigger state)
+
         internal override void ReleaseGeometry()
         {
             Registry.Remove(_registeredId);
@@ -189,7 +200,9 @@ namespace Box3D.Hybrid
         internal override void ReleaseDetachedGeometry() => ReleaseGeometry();
 #endif
 
-        private void OnDrawGizmosSelected()
+        //CCX_MOD BEGIN(Draw through the editor selection gizmo dispatcher)
+        internal override void DrawSelectedShapeGizmo()
+        //CCX_MOD END(Draw through the editor selection gizmo dispatcher)
         {
             Terrain terrain = Terrain ? Terrain : GetComponent<Terrain>();
             if (!terrain || !terrain.terrainData) return;

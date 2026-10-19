@@ -60,6 +60,7 @@ namespace Box3D
             return 1f; // keep the full ray — collect every hit
         }
 
+        //TODO: OverlapAABB需要一个刚好的返回形式。之后用到了再改。
         /// <summary>Finds shapes whose bounds overlap the AABB. Fills the buffer, returns the
         /// count (query stops early if the buffer fills up).</summary>
         public int OverlapAABB(B3Aabb aabb, QueryFilter filter, Span<ShapeId> results)

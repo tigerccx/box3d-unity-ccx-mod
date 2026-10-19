@@ -11,6 +11,21 @@ namespace Box3D.Hybrid
         [SerializeField, Tooltip("Full box size in local units (like Unity's BoxCollider.size).")]
         private Vector3 Size = Vector3.one;
 
+        //CCX_MOD BEGIN(Unity Collider-style shape properties)
+        public Vector3 size
+        {
+            get => Size;
+            set
+            {
+                Vector3 previous = Size;
+                Size = new Vector3(Mathf.Abs(value.x), Mathf.Abs(value.y), Mathf.Abs(value.z));
+                try { RefreshGeometry(); }
+                catch { Size = previous; throw; }
+            }
+        }
+        protected override void UpdateLiveGeometry() => RecreatePrimitiveGeometry();
+        //CCX_MOD END(Unity Collider-style shape properties)
+
         protected override Shape CreateShape(Body body, float3 localPosition, quaternion localRotation, float3 scale)
         {
             float3 halfExtents = (float3)Size * 0.5f * math.abs(scale);
@@ -23,7 +38,9 @@ namespace Box3D.Hybrid
             return body.CreateHullShape(BuildDef(), in hull);
         }
 
-        private void OnDrawGizmosSelected()
+        //CCX_MOD BEGIN(Draw through the editor selection gizmo dispatcher)
+        internal override void DrawSelectedShapeGizmo()
+        //CCX_MOD END(Draw through the editor selection gizmo dispatcher)
         {
             SetGizmoFrame();
             float3 size = (float3)Size * math.abs((float3)transform.lossyScale);

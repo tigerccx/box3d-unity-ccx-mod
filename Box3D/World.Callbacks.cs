@@ -10,8 +10,8 @@ namespace Box3D
     //CCX_MOD BEGIN(Declare managed per-body pre-integrate handler)
     /// <summary>Customizes one body's solver state before position integration. This currently runs
     /// synchronously on the solver orchestrator thread; do not access Unity APIs from this handler.</summary>
-    public delegate void PreIntegratePositionsHandler(in Body body, ref float3 linearVelocity, ref float3 angularVelocity,
-        ref float3 deltaPosition, ref quaternion deltaRotation, float timeStep);
+    public delegate void PreIntegratePositionsHandler(in Body body, ref Vector3 linearVelocity, ref Vector3 angularVelocity,
+        ref Vector3 deltaPosition, ref Quaternion deltaRotation, float timeStep);
     //CCX_MOD END(Declare managed per-body pre-integrate handler)
 
     /// <summary>Decides if two shapes should collide. Both shapes have EnableCustomFiltering.
@@ -235,16 +235,29 @@ namespace Box3D
         {
             if (!Handlers.TryGetValue(bodyId, out PreIntegratePositionsHandler handler)) return;
 
+            //CCX_MOD BEGIN(Convert native solver state to Unity handler types)
+            Vector3 managedLinearVelocity = *linearVelocity;
+            Vector3 managedAngularVelocity = *angularVelocity;
+            Vector3 managedDeltaPosition = *deltaPosition;
+            Quaternion managedDeltaRotation = *deltaRotation;
             try
             {
-                // TODO: Implement main-thread dispatch for pre-integrate handlers.
-                handler(new Body(bodyId), ref *linearVelocity, ref *angularVelocity, ref *deltaPosition,
-                    ref *deltaRotation, timeStep);
+                handler(new Body(bodyId), ref managedLinearVelocity, ref managedAngularVelocity,
+                    ref managedDeltaPosition, ref managedDeltaRotation, timeStep);
             }
             catch (Exception exception)
             {
                 Debug.LogException(exception);
             }
+            finally
+            {
+                // Preserve ref writes, including changes made before a handler throws.
+                *linearVelocity = managedLinearVelocity;
+                *angularVelocity = managedAngularVelocity;
+                *deltaPosition = managedDeltaPosition;
+                *deltaRotation = managedDeltaRotation;
+            }
+            //CCX_MOD END(Convert native solver state to Unity handler types)
         }
     }
     //CCX_MOD END(Add BodyId-based pre-integrate callback dispatcher)

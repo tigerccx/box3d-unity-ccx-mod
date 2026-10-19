@@ -16,11 +16,38 @@ namespace Box3D.Hybrid
         [SerializeField, Range(4, 64), Tooltip("Maximum hull vertices kept from the mesh.")]
         private int MaxVertices = 64;
 
-        /// <summary>Sets the source mesh. Must be set before the body creates the shape (Awake).</summary>
+        //CCX_MOD BEGIN(Route mesh assignment through the Collider-style property)
+        /// <summary>Sets the source mesh and refreshes any live collision geometry.</summary>
+        //CCX_MOD END(Route mesh assignment through the Collider-style property)
         public void SetMesh(Mesh mesh)
         {
-            Mesh = mesh;
+            //CCX_MOD BEGIN(Route mesh assignment through the Collider-style property)
+            sharedMesh = mesh;
+            //CCX_MOD END(Route mesh assignment through the Collider-style property)
         }
+
+        //CCX_MOD BEGIN(Unity Collider-style shape properties)
+        /// <summary>Source mesh, rebuilt into collision geometry when assigned at runtime.</summary>
+        public Mesh sharedMesh
+        {
+            get => Mesh;
+            set
+            {
+                if (LiveShape.IsValid && (!value || !value.isReadable))
+                    throw new System.ArgumentException("A live shape requires a readable, non-null mesh.", nameof(value));
+                Mesh previous = Mesh;
+                Mesh = value;
+                try { RefreshGeometry(); }
+                catch { Mesh = previous; throw; }
+            }
+        }
+
+        protected override void UpdateLiveGeometry()
+        {
+            if (!Mesh || !Mesh.isReadable || !TryRebuildGeometry(Mesh.vertices, Mesh.triangles))
+                throw new System.InvalidOperationException("Could not rebuild collision geometry from the source mesh.");
+        }
+        //CCX_MOD END(Unity Collider-style shape properties)
 
         protected override Shape CreateShape(Body body, float3 localPosition, quaternion localRotation, float3 scale)
         {
@@ -70,7 +97,9 @@ namespace Box3D.Hybrid
             return shape;
         }
 
-        private void OnDrawGizmosSelected()
+        //CCX_MOD BEGIN(Draw through the editor selection gizmo dispatcher)
+        internal override void DrawSelectedShapeGizmo()
+        //CCX_MOD END(Draw through the editor selection gizmo dispatcher)
         {
             // Approximate: draws the source mesh, not the exact convex hull (close enough to place).
             if (!Mesh) return;

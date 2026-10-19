@@ -8,21 +8,38 @@ namespace Box3D.Hybrid.Editor
     /// Handles are drawn in a position+rotation frame with the lossy scale baked into dimensions,
     /// matching how the physics shape is built.</summary>
     [CustomEditor(typeof(Box3DSphereShape))]
-    public class Box3DSphereShapeEditor : UnityEditor.Editor
+    //CCX_MOD BEGIN(Enable multi-object editing for Shape inspectors)
+    [CanEditMultipleObjects]
+    //CCX_MOD END(Enable multi-object editing for Shape inspectors)
+    //CCX_MOD BEGIN(Use shared Shape inspector)
+    public class Box3DSphereShapeEditor : Box3DShapeEditor
+    //CCX_MOD END(Use shared Shape inspector)
     {
         private readonly SphereBoundsHandle _handle = new SphereBoundsHandle();
         // Cached once — OnSceneGUI runs per scene-view event, and FindProperty re-walks the path.
+        //CCX_MOD BEGIN(Cache serialized object and multi-selection state for Shape handles)
+        private SerializedObject _serializedObject;
+        private bool _editingMultipleObjects;
+        //CCX_MOD END(Cache serialized object and multi-selection state for Shape handles)
         private SerializedProperty _radius;
         private SerializedProperty _center;
 
         private void OnEnable()
         {
-            _radius = serializedObject.FindProperty("Radius");
-            _center = serializedObject.FindProperty("Center");
+            //CCX_MOD BEGIN(Initialize cached serialized properties for Shape handles)
+            _serializedObject = serializedObject;
+            _editingMultipleObjects = _serializedObject.isEditingMultipleObjects;
+            _radius = _serializedObject.FindProperty("Radius");
+            _center = _serializedObject.FindProperty("Center");
+            //CCX_MOD END(Initialize cached serialized properties for Shape handles)
         }
 
         private void OnSceneGUI()
         {
+            //CCX_MOD BEGIN(Skip Shape handles during multi-object editing)
+            if (_editingMultipleObjects) return;
+
+            //CCX_MOD END(Skip Shape handles during multi-object editing)
             Transform t = ((Box3DSphereShape)target).transform;
             SerializedProperty radius = _radius;
             SerializedProperty center = _center;
@@ -40,7 +57,9 @@ namespace Box3D.Hybrid.Editor
                     Undo.RecordObject(target, "Edit Sphere Shape");
                     radius.floatValue = _handle.radius / scale;
                     center.vector3Value = ShapeHandleMath.Unscale(_handle.center, t.lossyScale);
-                    serializedObject.ApplyModifiedProperties();
+                    //CCX_MOD BEGIN(Apply Shape handle edits through the cached serialized object)
+                    _serializedObject.ApplyModifiedProperties();
+                    //CCX_MOD END(Apply Shape handle edits through the cached serialized object)
                 }
             }
         }
@@ -48,21 +67,38 @@ namespace Box3D.Hybrid.Editor
 
     /// <summary>Scene-view editing for the box shape: drag the faces to resize.</summary>
     [CustomEditor(typeof(Box3DBoxShape))]
-    public class Box3DBoxShapeEditor : UnityEditor.Editor
+    //CCX_MOD BEGIN(Enable multi-object editing for Shape inspectors)
+    [CanEditMultipleObjects]
+    //CCX_MOD END(Enable multi-object editing for Shape inspectors)
+    //CCX_MOD BEGIN(Use shared Shape inspector)
+    public class Box3DBoxShapeEditor : Box3DShapeEditor
+    //CCX_MOD END(Use shared Shape inspector)
     {
         private readonly BoxBoundsHandle _handle = new BoxBoundsHandle();
         // Cached once — OnSceneGUI runs per scene-view event, and FindProperty re-walks the path.
+        //CCX_MOD BEGIN(Cache serialized object and multi-selection state for Shape handles)
+        private SerializedObject _serializedObject;
+        private bool _editingMultipleObjects;
+        //CCX_MOD END(Cache serialized object and multi-selection state for Shape handles)
         private SerializedProperty _size;
         private SerializedProperty _center;
 
         private void OnEnable()
         {
-            _size = serializedObject.FindProperty("Size");
-            _center = serializedObject.FindProperty("Center");
+            //CCX_MOD BEGIN(Initialize cached serialized properties for Shape handles)
+            _serializedObject = serializedObject;
+            _editingMultipleObjects = _serializedObject.isEditingMultipleObjects;
+            _size = _serializedObject.FindProperty("Size");
+            _center = _serializedObject.FindProperty("Center");
+            //CCX_MOD END(Initialize cached serialized properties for Shape handles)
         }
 
         private void OnSceneGUI()
         {
+            //CCX_MOD BEGIN(Skip Shape handles during multi-object editing)
+            if (_editingMultipleObjects) return;
+
+            //CCX_MOD END(Skip Shape handles during multi-object editing)
             Transform t = ((Box3DBoxShape)target).transform;
             SerializedProperty size = _size;
             SerializedProperty center = _center;
@@ -80,7 +116,9 @@ namespace Box3D.Hybrid.Editor
                     Undo.RecordObject(target, "Edit Box Shape");
                     size.vector3Value = ShapeHandleMath.Unscale(_handle.size, scale);
                     center.vector3Value = ShapeHandleMath.Unscale(_handle.center, t.lossyScale);
-                    serializedObject.ApplyModifiedProperties();
+                    //CCX_MOD BEGIN(Apply Shape handle edits through the cached serialized object)
+                    _serializedObject.ApplyModifiedProperties();
+                    //CCX_MOD END(Apply Shape handle edits through the cached serialized object)
                 }
             }
         }
@@ -89,10 +127,19 @@ namespace Box3D.Hybrid.Editor
     /// <summary>Scene-view editing for the capsule shape: drag radius and height. Radius scales by
     /// the perpendicular axes and height by the capsule axis, matching the physics shape.</summary>
     [CustomEditor(typeof(Box3DCapsuleShape))]
-    public class Box3DCapsuleShapeEditor : UnityEditor.Editor
+    //CCX_MOD BEGIN(Enable multi-object editing for Shape inspectors)
+    [CanEditMultipleObjects]
+    //CCX_MOD END(Enable multi-object editing for Shape inspectors)
+    //CCX_MOD BEGIN(Use shared Shape inspector)
+    public class Box3DCapsuleShapeEditor : Box3DShapeEditor
+    //CCX_MOD END(Use shared Shape inspector)
     {
         private readonly CapsuleBoundsHandle _handle = new CapsuleBoundsHandle();
         // Cached once — OnSceneGUI runs per scene-view event, and FindProperty re-walks the path.
+        //CCX_MOD BEGIN(Cache serialized object and multi-selection state for Shape handles)
+        private SerializedObject _serializedObject;
+        private bool _editingMultipleObjects;
+        //CCX_MOD END(Cache serialized object and multi-selection state for Shape handles)
         private SerializedProperty _radius;
         private SerializedProperty _height;
         private SerializedProperty _center;
@@ -100,14 +147,22 @@ namespace Box3D.Hybrid.Editor
 
         private void OnEnable()
         {
-            _radius = serializedObject.FindProperty("Radius");
-            _height = serializedObject.FindProperty("Height");
-            _center = serializedObject.FindProperty("Center");
-            _direction = serializedObject.FindProperty("Direction");
+            //CCX_MOD BEGIN(Initialize cached serialized properties for Shape handles)
+            _serializedObject = serializedObject;
+            _editingMultipleObjects = _serializedObject.isEditingMultipleObjects;
+            _radius = _serializedObject.FindProperty("Radius");
+            _height = _serializedObject.FindProperty("Height");
+            _center = _serializedObject.FindProperty("Center");
+            _direction = _serializedObject.FindProperty("Direction");
+            //CCX_MOD END(Initialize cached serialized properties for Shape handles)
         }
 
         private void OnSceneGUI()
         {
+            //CCX_MOD BEGIN(Skip Shape handles during multi-object editing)
+            if (_editingMultipleObjects) return;
+
+            //CCX_MOD END(Skip Shape handles during multi-object editing)
             Transform t = ((Box3DCapsuleShape)target).transform;
             SerializedProperty radius = _radius;
             SerializedProperty height = _height;
@@ -133,11 +188,35 @@ namespace Box3D.Hybrid.Editor
                     radius.floatValue = _handle.radius / radialScale;
                     height.floatValue = _handle.height / axisScale;
                     center.vector3Value = ShapeHandleMath.Unscale(_handle.center, t.lossyScale);
-                    serializedObject.ApplyModifiedProperties();
+                    //CCX_MOD BEGIN(Apply Shape handle edits through the cached serialized object)
+                    _serializedObject.ApplyModifiedProperties();
+                    //CCX_MOD END(Apply Shape handle edits through the cached serialized object)
                 }
             }
         }
     }
+
+    //CCX_MOD BEGIN(Draw selected Shape outlines independently of inspector foldouts)
+    internal static class ShapeSelectionGizmos
+    {
+        [DrawGizmo(GizmoType.InSelectionHierarchy)]
+        private static void DrawSelectedShape(Box3DShape shape, GizmoType gizmoType)
+        {
+            if (!shape) return;
+            Matrix4x4 previousMatrix = Gizmos.matrix;
+            Color previousColor = Gizmos.color;
+            try
+            {
+                shape.DrawSelectedShapeGizmo();
+            }
+            finally
+            {
+                Gizmos.matrix = previousMatrix;
+                Gizmos.color = previousColor;
+            }
+        }
+    }
+    //CCX_MOD END(Draw selected Shape outlines independently of inspector foldouts)
 
     internal static class ShapeHandleMath
     {
