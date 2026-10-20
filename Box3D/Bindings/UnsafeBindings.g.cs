@@ -1628,7 +1628,7 @@ namespace Box3D
     }
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    internal unsafe delegate void b3PreIntegratePositionsCallback([NativeTypeName("b3BodyId")] BodyId bodyId, [NativeTypeName("b3Vec3 *")] Unity.Mathematics.float3* linearVelocity, [NativeTypeName("b3Vec3 *")] Unity.Mathematics.float3* angularVelocity, [NativeTypeName("b3Vec3 *")] Unity.Mathematics.float3* deltaPosition, [NativeTypeName("b3Quat *")] Unity.Mathematics.quaternion* deltaRotation, float timeStep);
+    internal unsafe delegate void b3PreIntegratePositionsCallback([NativeTypeName("b3BodyId")] BodyId bodyId, [NativeTypeName("const b3Vec3 *")] Unity.Mathematics.float3* deltaPosition, [NativeTypeName("const b3Quat *")] Unity.Mathematics.quaternion* deltaRotation, float timeStep);
 
     internal partial struct b3Recording
     {
@@ -2409,7 +2409,13 @@ namespace Box3D
         public static extern void b3Body_SetLinearVelocity([NativeTypeName("b3BodyId")] BodyId bodyId, [NativeTypeName("b3Vec3")] Unity.Mathematics.float3 linearVelocity);
 
         [DllImport(Box3DLibrary.Name, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        public static extern void b3Body_SetLinearVelocityWithWake([NativeTypeName("b3BodyId")] BodyId bodyId, [NativeTypeName("b3Vec3")] Unity.Mathematics.float3 linearVelocity, [NativeTypeName("_Bool")] NativeBool wake);
+
+        [DllImport(Box3DLibrary.Name, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         public static extern void b3Body_SetAngularVelocity([NativeTypeName("b3BodyId")] BodyId bodyId, [NativeTypeName("b3Vec3")] Unity.Mathematics.float3 angularVelocity);
+
+        [DllImport(Box3DLibrary.Name, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        public static extern void b3Body_SetAngularVelocityWithWake([NativeTypeName("b3BodyId")] BodyId bodyId, [NativeTypeName("b3Vec3")] Unity.Mathematics.float3 angularVelocity, [NativeTypeName("_Bool")] NativeBool wake);
 
         [DllImport(Box3DLibrary.Name, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         public static extern void b3Body_SetTargetTransform([NativeTypeName("b3BodyId")] BodyId bodyId, B3WorldTransform target, float timeStep, [NativeTypeName("_Bool")] NativeBool wake);

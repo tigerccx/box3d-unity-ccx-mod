@@ -40,3 +40,12 @@ In short:
 Implementation only: rebuild DLL
 Public API change: regenerate bindings -> check manual ABI types -> rebuild DLL -> test in Unity
 ```
+
+## Windows Build Notes
+
+- Requires Windows PowerShell 5.1+, VS C++ tools (VS 2019 16.8+) and a Windows SDK. VS 2026 requires CMake 4.2+.
+- Keep `build_windows_ccx.ps1` beside the bat. The script automatically selects VS and CMake.
+- If detection fails, set `BOX3D_SRC`, `CMAKE` or `VSWHERE` to the corresponding directory or executable. Use `GENERATOR` and `CMAKE_GENERATOR_INSTANCE` to select a specific toolchain.
+- For Ninja, set `GENERATOR=Ninja` and run from an x64 MSVC developer command prompt with Ninja installed.
+- Set `BOX3D_DOUBLE` to any non-empty value to build `box3d_d.dll`; enable `BOX3D_DOUBLE` in C# as well. Leave it unset for single precision.
+- Builds use `build-auto-*` directories; the old `build/` and `build-double/` caches are not used.

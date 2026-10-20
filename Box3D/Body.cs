@@ -44,6 +44,16 @@ namespace Box3D
             set => UnsafeBindings.b3Body_SetAngularVelocity(Id, value);
         }
 
+        /// <summary>Set world velocity. Pass wake=false in a pre-integrate handler.
+        /// Sleeping, disabled and static bodies are ignored when wake=false.</summary>
+        public void SetLinearVelocity(float3 linearVelocity, bool wake = true)
+            => UnsafeBindings.b3Body_SetLinearVelocityWithWake(Id, linearVelocity, wake);
+
+        /// <summary>Set world angular velocity in radians per second. Pass wake=false in a pre-integrate handler.
+        /// Sleeping, disabled and static bodies are ignored when wake=false.</summary>
+        public void SetAngularVelocity(float3 angularVelocity, bool wake = true)
+            => UnsafeBindings.b3Body_SetAngularVelocityWithWake(Id, angularVelocity, wake);
+
         public bool IsAwake => UnsafeBindings.b3Body_IsAwake(Id);
 
         /// <summary>The body's simulation type (static / kinematic / dynamic).</summary>

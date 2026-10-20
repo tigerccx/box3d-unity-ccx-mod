@@ -68,3 +68,18 @@ prevents you from storing them.
   and are what you hold most of the time.)
 - Determinism is a box3d design goal (cross-platform deterministic math). Same inputs, same steps →
   same results, which makes it a candidate for lockstep networking.
+
+## Body velocity setters
+
+`Body.SetLinearVelocity(value, bool wake = true)` and
+`Body.SetAngularVelocity(value, bool wake = true)` set world-space velocity
+(angular velocity is in radians per second). `Box3DBody` exposes the same methods.
+
+- `wake=true`: a nonzero velocity wakes a sleeping body. Angular motion locks are applied before deciding whether to wake.
+- `wake=false`: only awake bodies are modified; sleeping bodies do not store a pending velocity.
+- Static and disabled bodies are ignored. Enable a disabled body explicitly before setting velocity.
+
+The velocity property setters retain their wake behavior. In a
+[pre-integrate handler](callbacks-and-threading.md#pre-integrate-callback), use the methods
+with `wake: false` instead of assigning properties. This controls waking; it does not make
+setters safe for arbitrary concurrent calls or other solver callbacks.

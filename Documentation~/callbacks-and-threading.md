@@ -17,7 +17,7 @@ of loose objects scale beautifully; one giant jointed structure barely paralleli
 `Step` blocks until the step completes — from your code's perspective the API is single-threaded
 and there is nothing to synchronize... *except* the callbacks below.
 
-## Callbacks
+## Collision and material callbacks
 
 Most games never need these — the polled [events](events.md) cover reactions, and filters cover
 most collision rules. Callbacks exist for the cases polling can't do: vetoing contacts and custom
@@ -43,6 +43,29 @@ thread would crash the player).
 One limitation inherited from the native API: the friction/restitution mixers receive no world
 context, so the wrapper keeps a single **global** managed mixer of each kind — the last
 registration wins across all worlds. Filter and pre-solve callbacks are properly per-world.
+
+## Pre-integrate callback
+
+Register a `PreIntegratePositionsHandler` with `body.RegisterPreIntegratePositionsHandler(handler)`
+(or the same method on `Box3DBody`); pass `null` to unregister.
+It runs serially on the solver orchestrator for each registered awake body in every sub-step,
+after constraint solving and before position integration.
+
+The handler receives `in Body body`, `in Vector3 deltaPosition`, `in Quaternion deltaRotation`
+and `float timeStep` (the sub-step duration). Deltas are read-only changes accumulated by
+preceding sub-steps: initially zero translation and identity rotation. Stored body transforms
+exclude these deltas. The dispatcher does not write velocity or deltas back.
+
+Read the callback body's velocity, mass, inertia and stored transform directly. To change
+velocity, use the [velocity setters](concepts.md#body-velocity-setters) with `wake: false`.
+`ApplyLinearImpulse`, `ApplyLinearImpulseToCenter` and `ApplyAngularImpulse` on that body with
+`wake: false` are also permitted. Do not access other bodies, use other mutating APIs, or
+access Unity scene APIs. Use impulses for an immediate response; force integration has
+already run for this sub-step.
+
+Position integration still applies motion locks and speed limits; later constraint relaxation
+may change velocity. Large changes can increase contact or joint error. Exceptions are logged;
+body changes already applied are not rolled back.
 
 ## Logging and asserts
 

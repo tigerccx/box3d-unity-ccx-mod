@@ -392,8 +392,8 @@ namespace Box3D.Hybrid
         public Vector3 GetWorldVector(Vector3 localVector) => _body.GetWorldVector(localVector);
         public Vector3 GetLinearVelocity() => _body.GetLinearVelocity();
         public Vector3 GetAngularVelocity() => _body.GetAngularVelocity();
-        public void SetLinearVelocity(Vector3 linearVelocity) => _body.SetLinearVelocity(linearVelocity);
-        public void SetAngularVelocity(Vector3 angularVelocity) => _body.SetAngularVelocity(angularVelocity);
+        public void SetLinearVelocity(Vector3 linearVelocity, bool wake = true) => _body.SetLinearVelocity(linearVelocity, wake);
+        public void SetAngularVelocity(Vector3 angularVelocity, bool wake = true) => _body.SetAngularVelocity(angularVelocity, wake);
         public void SetTargetTransform(Pose target, float timeStep, bool wake = true) => _body.SetTargetTransform(new B3WorldTransform { Position = target.position, Rotation = target.rotation }, timeStep, wake);
         public Vector3 GetLocalPointVelocity(Vector3 localPoint) => _body.GetLocalPointVelocity(localPoint);
         public Vector3 GetWorldPointVelocity(Vector3 worldPoint) => _body.GetWorldPointVelocity(worldPoint);

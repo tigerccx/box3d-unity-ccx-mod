@@ -19,8 +19,8 @@ namespace Box3D
         public Unity.Mathematics.float3 GetWorldVector(Unity.Mathematics.float3 localVector) => UnsafeBindings.b3Body_GetWorldVector(Id, localVector);
         public Unity.Mathematics.float3 GetLinearVelocity() => UnsafeBindings.b3Body_GetLinearVelocity(Id);
         public Unity.Mathematics.float3 GetAngularVelocity() => UnsafeBindings.b3Body_GetAngularVelocity(Id);
-        public void SetLinearVelocity(Unity.Mathematics.float3 linearVelocity) => UnsafeBindings.b3Body_SetLinearVelocity(Id, linearVelocity);
-        public void SetAngularVelocity(Unity.Mathematics.float3 angularVelocity) => UnsafeBindings.b3Body_SetAngularVelocity(Id, angularVelocity);
+        public void SetLinearVelocityWithWake(Unity.Mathematics.float3 linearVelocity, bool wake) => UnsafeBindings.b3Body_SetLinearVelocityWithWake(Id, linearVelocity, wake);
+        public void SetAngularVelocityWithWake(Unity.Mathematics.float3 angularVelocity, bool wake) => UnsafeBindings.b3Body_SetAngularVelocityWithWake(Id, angularVelocity, wake);
         public void SetTargetTransform(B3WorldTransform target, float timeStep, bool wake) => UnsafeBindings.b3Body_SetTargetTransform(Id, target, timeStep, wake);
         public Unity.Mathematics.float3 GetLocalPointVelocity(Unity.Mathematics.float3 localPoint) => UnsafeBindings.b3Body_GetLocalPointVelocity(Id, localPoint);
         public Unity.Mathematics.float3 GetWorldPointVelocity(B3Pos worldPoint) => UnsafeBindings.b3Body_GetWorldPointVelocity(Id, worldPoint);

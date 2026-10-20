@@ -8,10 +8,13 @@ using UnityEngine;
 namespace Box3D
 {
     //CCX_MOD BEGIN(Declare managed per-body pre-integrate handler)
-    /// <summary>Customizes one body's solver state before position integration. This currently runs
-    /// synchronously on the solver orchestrator thread; do not access Unity APIs from this handler.</summary>
-    public delegate void PreIntegratePositionsHandler(in Body body, ref Vector3 linearVelocity, ref Vector3 angularVelocity,
-        ref Vector3 deltaPosition, ref Quaternion deltaRotation, float timeStep);
+    /// <summary>Customizes an awake body before position integration on the solver orchestrator thread.
+    /// Read velocity from body; use SetLinearVelocity/SetAngularVelocity or Apply*Impulse with wake=false.
+    /// Only operate on the supplied body. Do not change world structure or access Unity scene APIs.
+    /// Deltas are read-only changes accumulated by preceding sub-steps.
+    /// Stored transforms exclude the supplied deltas. Position integration and relaxation may adjust velocity.</summary>
+    public delegate void PreIntegratePositionsHandler(in Body body,
+        in Vector3 deltaPosition, in Quaternion deltaRotation, float timeStep);
     //CCX_MOD END(Declare managed per-body pre-integrate handler)
 
     /// <summary>Decides if two shapes should collide. Both shapes have EnableCustomFiltering.
@@ -230,32 +233,22 @@ namespace Box3D
         }
 
         [MonoPInvokeCallback(typeof(b3PreIntegratePositionsCallback))]
-        private static void OnPreIntegratePositions(BodyId bodyId, float3* linearVelocity, float3* angularVelocity,
+        private static void OnPreIntegratePositions(BodyId bodyId,
             float3* deltaPosition, quaternion* deltaRotation, float timeStep)
         {
             if (!Handlers.TryGetValue(bodyId, out PreIntegratePositionsHandler handler)) return;
 
             //CCX_MOD BEGIN(Convert native solver state to Unity handler types)
-            Vector3 managedLinearVelocity = *linearVelocity;
-            Vector3 managedAngularVelocity = *angularVelocity;
             Vector3 managedDeltaPosition = *deltaPosition;
             Quaternion managedDeltaRotation = *deltaRotation;
             try
             {
-                handler(new Body(bodyId), ref managedLinearVelocity, ref managedAngularVelocity,
-                    ref managedDeltaPosition, ref managedDeltaRotation, timeStep);
+                handler(new Body(bodyId),
+                    in managedDeltaPosition, in managedDeltaRotation, timeStep);
             }
             catch (Exception exception)
             {
                 Debug.LogException(exception);
-            }
-            finally
-            {
-                // Preserve ref writes, including changes made before a handler throws.
-                *linearVelocity = managedLinearVelocity;
-                *angularVelocity = managedAngularVelocity;
-                *deltaPosition = managedDeltaPosition;
-                *deltaRotation = managedDeltaRotation;
             }
             //CCX_MOD END(Convert native solver state to Unity handler types)
         }
