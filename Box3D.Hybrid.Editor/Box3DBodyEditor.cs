@@ -55,6 +55,15 @@ namespace Box3D.Hybrid.Editor
         public override void OnInspectorGUI()
         {
             DrawDefaultInspector();
+            //CCX_MOD BEGIN(Support shape mass and density settings)
+            if (targets.Length == 1)
+            {
+                var selected = (Box3DBody)target;
+                using (new EditorGUI.DisabledScope(true))
+                    EditorGUILayout.FloatField(Application.isPlaying ? "Mass (Runtime)" : "Mass (Calculated)",
+                        Application.isPlaying && selected.Body.IsValid ? selected.Body.GetMass() : selected.CalculatedMass);
+            }
+            //CCX_MOD END(Support shape mass and density settings)
 
             //CCX_MOD BEGIN(Show live Body diagnostics only for a single selected Body)
             if (!Application.isPlaying || targets.Length != 1) return;
@@ -69,7 +78,9 @@ namespace Box3D.Hybrid.Editor
             using (new EditorGUI.DisabledScope(true))
             {
                 EditorGUILayout.Toggle("Awake", body.IsAwake);
-                EditorGUILayout.FloatField("Mass", body.GetMass());
+                //CCX_MOD BEGIN(Support shape mass and density settings)
+                // Density configuration is now owned by Box3DDynamicBodyShape.
+                //CCX_MOD END(Support shape mass and density settings)
                 EditorGUILayout.FloatField("Speed", math.length(body.LinearVelocity));
             }
 
@@ -174,7 +185,9 @@ namespace Box3D.Hybrid.Editor
         // Keep the read-out and Scene drawing ticking while playing.
         public override bool RequiresConstantRepaint()
         {
-            return Application.isPlaying;
+            //CCX_MOD BEGIN(Support shape mass and density settings)
+            return true;
+            //CCX_MOD END(Support shape mass and density settings)
         }
     }
 }

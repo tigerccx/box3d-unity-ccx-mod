@@ -15,7 +15,9 @@ namespace Box3D.Hybrid
     /// including the hemispherical caps.</summary>
     [Icon("Packages/com.suvitruf.box3d/Box3D.Hybrid.Editor/Icons/Box3DCapsuleShape.png")]
     [AddComponentMenu("Box3D/Shapes/Capsule Shape")]
-    public class Box3DCapsuleShape : Box3DShape
+    //CCX_MOD BEGIN(Support shape mass and density settings)
+    public class Box3DCapsuleShape : Box3DDynamicBodyShape
+    //CCX_MOD END(Support shape mass and density settings)
     {
         [SerializeField, Min(0f), Tooltip("Capsule radius in local units.")]
         private float Radius = 0.5f;
@@ -135,5 +137,14 @@ namespace Box3D.Hybrid
                 default: return new float3(0f, 1f, 0f);
             }
         }
+        //CCX_MOD BEGIN(Support shape mass and density settings)
+
+        public override float CalculateVolume()
+        {
+            Resolve(float3.zero, quaternion.identity, VolumeScale, out float3 a, out float3 b, out float r);
+            return math.PI * r * r * (math.distance(a, b) + 4f / 3f * r);
+        }
+
+        //CCX_MOD END(Support shape mass and density settings)
     }
 }

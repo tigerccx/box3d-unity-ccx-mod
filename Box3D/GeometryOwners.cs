@@ -57,6 +57,37 @@ namespace Box3D
             UnsafeBindings.b3DestroyHull((HullData*)Data);
             Data = IntPtr.Zero;
         }
+        //CCX_MOD BEGIN(Support shape mass and density settings)
+
+        /// <summary>Integrates tetrahedra over the final collision hull faces in managed code.
+        /// Does not create a native world, body or shape.</summary>
+        public unsafe float CalculateVolume()
+        {
+            if (!IsCreated) return 0f;
+            var hull = (HullData*)Data;
+            byte* start = (byte*)hull;
+            var points = (float3*)(start + hull->PointOffset);
+            var edges = (b3HullHalfEdge*)(start + hull->EdgeOffset);
+            var faces = (b3HullFace*)(start + hull->FaceOffset);
+            double volume = 0;
+            float3 reference = hull->Center;
+            for (int i = 0; i < hull->FaceCount; i++)
+            {
+                int first = faces[i].edge;
+                float3 a = points[edges[first].origin] - reference;
+                int edge = edges[first].next;
+                while (edges[edge].next != first)
+                {
+                    float3 b = points[edges[edge].origin] - reference;
+                    float3 c = points[edges[edges[edge].next].origin] - reference;
+                    volume += math.dot(a, math.cross(b, c)) / 6.0;
+                    edge = edges[edge].next;
+                }
+            }
+            return (float)Math.Abs(volume);
+        }
+
+        //CCX_MOD END(Support shape mass and density settings)
     }
 
     /// <summary>Owns native triangle mesh data (b3MeshData*). Static bodies only. REFERENCED by

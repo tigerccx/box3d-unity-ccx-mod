@@ -3,6 +3,7 @@
     "rootNamespace": "Box3D.Tests",
     "references": [
         "Box3D.Runtime",
+        "Box3D.Hybrid",
         "Unity.Mathematics",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"

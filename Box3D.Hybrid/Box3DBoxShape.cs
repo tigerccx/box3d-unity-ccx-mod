@@ -6,7 +6,9 @@ namespace Box3D.Hybrid
     /// <summary>A box shape, analogous to Unity's BoxCollider.</summary>
     [Icon("Packages/com.suvitruf.box3d/Box3D.Hybrid.Editor/Icons/Box3DBoxShape.png")]
     [AddComponentMenu("Box3D/Shapes/Box Shape")]
-    public class Box3DBoxShape : Box3DShape
+    //CCX_MOD BEGIN(Support shape mass and density settings)
+    public class Box3DBoxShape : Box3DDynamicBodyShape
+    //CCX_MOD END(Support shape mass and density settings)
     {
         [SerializeField, Tooltip("Full box size in local units (like Unity's BoxCollider.size).")]
         private Vector3 Size = Vector3.one;
@@ -46,5 +48,14 @@ namespace Box3D.Hybrid
             float3 size = (float3)Size * math.abs((float3)transform.lossyScale);
             Gizmos.DrawWireCube((Vector3)ScaledCenter, (Vector3)size);
         }
+        //CCX_MOD BEGIN(Support shape mass and density settings)
+
+        public override float CalculateVolume()
+        {
+            float3 dimensions = math.abs((float3)Size * VolumeScale);
+            return dimensions.x * dimensions.y * dimensions.z;
+        }
+
+        //CCX_MOD END(Support shape mass and density settings)
     }
 }

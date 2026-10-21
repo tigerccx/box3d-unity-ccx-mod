@@ -8,7 +8,9 @@ namespace Box3D.Hybrid
     /// (unlike the concave <see cref="Box3DMeshShape"/>).</summary>
     [Icon("Packages/com.suvitruf.box3d/Box3D.Hybrid.Editor/Icons/Box3DHullShape.png")]
     [AddComponentMenu("Box3D/Shapes/Hull Shape")]
-    public class Box3DHullShape : Box3DShape
+    //CCX_MOD BEGIN(Support shape mass and density settings)
+    public class Box3DHullShape : Box3DDynamicBodyShape
+    //CCX_MOD END(Support shape mass and density settings)
     {
         [SerializeField, Tooltip("Mesh whose vertices define the convex hull. Must be Read/Write enabled.")]
         private Mesh Mesh;
@@ -72,6 +74,10 @@ namespace Box3D.Hybrid
             }
 
             Hull hull = Hull.Create(points, MaxVertices);
+            //CCX_MOD BEGIN(Support shape mass and density settings)
+            if (!hull.IsCreated) return default;
+            _collisionVolume = hull.CalculateVolume();
+            //CCX_MOD END(Support shape mass and density settings)
             Shape shape = body.CreateHullShape(BuildDef(), hull);
             hull.Destroy(); // cloned into the world — safe to free immediately
             return shape;
@@ -92,6 +98,9 @@ namespace Box3D.Hybrid
             Hull hull = Hull.Create(points, MaxVertices);
             if (!hull.IsCreated) return default; // degenerate point cloud — keep the old hull
 
+            //CCX_MOD BEGIN(Support shape mass and density settings)
+            _collisionVolume = hull.CalculateVolume();
+            //CCX_MOD END(Support shape mass and density settings)
             Shape shape = AttachedBody.CreateHullShape(BuildDef(), hull);
             hull.Destroy();
             return shape;
@@ -107,5 +116,23 @@ namespace Box3D.Hybrid
             Gizmos.matrix = transform.localToWorldMatrix;
             Gizmos.DrawWireMesh(Mesh, (Vector3)LocalCenter);
         }
+        //CCX_MOD BEGIN(Support shape mass and density settings)
+
+        private float _collisionVolume;
+
+        public override float CalculateVolume()
+        {
+            if (_collisionVolume > 0f && LiveShape.IsValid) return _collisionVolume;
+            if (!Mesh || !Mesh.isReadable || Mesh.vertexCount < 4) return 0f;
+            Vector3[] vertices = Mesh.vertices;
+            var points = new float3[vertices.Length];
+            for (int i = 0; i < points.Length; i++)
+                points[i] = ((float3)vertices[i] + LocalCenter) * VolumeScale;
+            Hull hull = Hull.Create(points, MaxVertices);
+            try { return hull.CalculateVolume(); }
+            finally { hull.Destroy(); }
+        }
+
+        //CCX_MOD END(Support shape mass and density settings)
     }
 }

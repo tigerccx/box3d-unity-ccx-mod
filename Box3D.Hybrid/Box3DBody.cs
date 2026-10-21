@@ -45,6 +45,11 @@ namespace Box3D.Hybrid
         private bool _allowFastRotation;
         //CCX_MOD END(Rename field to allow Body API forwarding)
 
+        //CCX_MOD BEGIN(Support shape mass and density settings)
+        [SerializeField] private bool OverrideMass;
+        [SerializeField, Min(0f)] private float MassOverride = 1f;
+
+        //CCX_MOD END(Support shape mass and density settings)
         private Box3DWorld _world;
         private Body _body;
         private Box3DShape[] _shapes;
@@ -69,6 +74,9 @@ namespace Box3D.Hybrid
                 if (!_body.IsValid) return;
 
                 _body.SetType(ToNative(value));
+                //CCX_MOD BEGIN(Support shape mass and density settings)
+                ApplyMassOverride();
+                //CCX_MOD END(Support shape mass and density settings)
                 bool isKinematic = value == Box3DBodyType.Kinematic;
                 if (isKinematic && !wasKinematic) _world.AddKinematic(this);
                 else if (!isKinematic && wasKinematic) _world.RemoveKinematic(this);
@@ -147,6 +155,9 @@ namespace Box3D.Hybrid
                 //CCX_MOD END(Register compound Shapes with their world and Body component)
             }
 
+            //CCX_MOD BEGIN(Support shape mass and density settings)
+            ApplyMassOverride();
+            //CCX_MOD END(Support shape mass and density settings)
             if (Type == Box3DBodyType.Kinematic) _world.AddKinematic(this);
             transform.hasChanged = false;
         }
@@ -357,6 +368,10 @@ namespace Box3D.Hybrid
             _body.SetType(ToNative(Type));
             _body.SetLinearDamping(LinearDamping);
             _body.SetAngularDamping(AngularDamping);
+            //CCX_MOD BEGIN(Support shape mass and density settings)
+            if (OverrideMass) ApplyMassOverride();
+            else _body.ApplyMassFromShapes();
+            //CCX_MOD END(Support shape mass and density settings)
             if (Type == Box3DBodyType.Kinematic) _world.AddKinematic(this);
             else _world.RemoveKinematic(this);
         }
@@ -580,5 +595,32 @@ namespace Box3D.Hybrid
             Cz = new float3(value.m02, value.m12, value.m22),
         };
         //CCX_MOD END(Forward Body generated API)
+        //CCX_MOD BEGIN(Support shape mass and density settings)
+        public float CalculatedMass
+        {
+            get
+            {
+                if (Type != Box3DBodyType.Dynamic) return 0f;
+                if (OverrideMass) return MassOverride;
+                var shapes = new System.Collections.Generic.List<Box3DShape>();
+                GatherShapes(transform, shapes, true);
+                float total = 0f;
+                foreach (var shape in shapes)
+                    if (shape is Box3DDynamicBodyShape dynamicShape &&
+                        Box3DDynamicBodyShape.IsValidVolume(dynamicShape.CalculateVolume()))
+                        total += dynamicShape.CalculatedMass;
+                return total;
+            }
+        }
+
+        internal void ApplyMassOverride()
+        {
+            if (!OverrideMass || !_body.IsValid || Type != Box3DBodyType.Dynamic) return;
+            var data = _body.GetMassData();
+            data.Mass = MassOverride;
+            _body.SetMassData(data);
+        }
+
+        //CCX_MOD END(Support shape mass and density settings)
     }
 }

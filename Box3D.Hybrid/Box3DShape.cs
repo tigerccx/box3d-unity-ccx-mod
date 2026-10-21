@@ -10,12 +10,14 @@ namespace Box3D.Hybrid
     /// its own static body, mirroring Unity's "collider without a rigidbody is static".
     /// Adding a shape in the editor auto-adds a <see cref="Box3DBody"/> when the hierarchy has
     /// none (set its type to Static for non-moving geometry).
-    /// Friction and restitution can be changed at runtime; density is baked at creation.</summary>
+    //CCX_MOD BEGIN(Support shape mass and density settings)
+    /// Material and supported mass settings can be changed at runtime.</summary>
+    //CCX_MOD END(Support shape mass and density settings)
     public abstract class Box3DShape : MonoBehaviour
     {
-        [SerializeField, Min(0f), Tooltip("Density in kg/m³ (mass = density × volume). Baked at creation.")]
-        private float Density = 1000f;
-
+        //CCX_MOD BEGIN(Support shape mass and density settings)
+        // Density configuration is now owned by Box3DDynamicBodyShape.
+        //CCX_MOD END(Support shape mass and density settings)
         [SerializeField, Range(0f, 1f), Tooltip("Coulomb friction coefficient.")]
         private float Friction = 0.6f;
 
@@ -152,8 +154,13 @@ namespace Box3D.Hybrid
         protected void RefreshGeometry()
         {
             if (!_shape.IsValid) return;
+            //CCX_MOD BEGIN(Support shape mass and density settings)
+            _attachScale = transform.lossyScale;
+            //CCX_MOD END(Support shape mass and density settings)
             UpdateLiveGeometry();
-            _shape.SetDensity(Density, updateBodyMass: true);
+            //CCX_MOD BEGIN(Support shape mass and density settings)
+            ApplyShapeDensity();
+            //CCX_MOD END(Support shape mass and density settings)
             if (_attachedBody.IsValid) _attachedBody.SetAwake(true);
         }
 
@@ -197,13 +204,9 @@ namespace Box3D.Hybrid
             if (_shape.IsValid) _shape.SetRestitution(value);
         }
 
-        /// <summary>Sets density (kg/m³), updating the live shape and its body's mass if it exists.
-        /// Set before the body is created to have it apply at build time.</summary>
-        public void SetDensity(float value)
-        {
-            Density = value;
-            if (_shape.IsValid) _shape.SetDensity(value, updateBodyMass: true);
-        }
+        //CCX_MOD BEGIN(Support shape mass and density settings)
+        // SetDensity is now defined on Box3DDynamicBodyShape.
+        //CCX_MOD END(Support shape mass and density settings)
 
 #if UNITY_EDITOR
         // Runs when the component is added in the editor (and on context-menu Reset). Like
@@ -266,7 +269,9 @@ namespace Box3D.Hybrid
         protected ShapeDef BuildDef()
         {
             ShapeDef def = ShapeDef.Default;
-            def.Density = Density;
+            //CCX_MOD BEGIN(Support shape mass and density settings)
+            def.Density = ResolveDensity();
+            //CCX_MOD END(Support shape mass and density settings)
             def.BaseMaterial.Friction = Friction;
             def.BaseMaterial.Restitution = Restitution;
             //CCX_MOD BEGIN(Apply trigger and layer settings at shape creation)
@@ -349,7 +354,9 @@ namespace Box3D.Hybrid
         //CCX_MOD END(Attach Shapes through Box3DBody and register their world ownership)
 
 #if UNITY_EDITOR
-        private void OnValidate()
+        //CCX_MOD BEGIN(Support shape mass and density settings)
+        protected virtual void OnValidate()
+        //CCX_MOD END(Support shape mass and density settings)
         {
             // Push Inspector edits to the live shape during play. SetDensity with updateBodyMass
             // re-derives mass from the current geometry, so size edits update mass too.
@@ -359,8 +366,13 @@ namespace Box3D.Hybrid
             //CCX_MOD END(Apply Inspector trigger and layer edits)
             _shape.SetFriction(Friction);
             _shape.SetRestitution(Restitution);
+            //CCX_MOD BEGIN(Support shape mass and density settings)
+            _attachScale = transform.lossyScale;
+            //CCX_MOD END(Support shape mass and density settings)
             UpdateLiveGeometry();
-            _shape.SetDensity(Density, updateBodyMass: true);
+            //CCX_MOD BEGIN(Support shape mass and density settings)
+            ApplyShapeDensity();
+            //CCX_MOD END(Support shape mass and density settings)
         }
 #endif
 
@@ -394,6 +406,9 @@ namespace Box3D.Hybrid
             //CCX_MOD END(Update world registration after rebuilding collision geometry)
             if (userData != IntPtr.Zero) _shape.UserData = userData;
             if (hitEvents) _shape.EnableHitEvents(true);
+            //CCX_MOD BEGIN(Support shape mass and density settings)
+            ApplyShapeDensity();
+            //CCX_MOD END(Support shape mass and density settings)
             return true;
         }
 
@@ -456,5 +471,12 @@ namespace Box3D.Hybrid
         //CCX_MOD END(Shared selected-shape drawing entry point)
 
         protected float3 ScaledCenter => (float3)Center * (float3)transform.lossyScale;
+        //CCX_MOD BEGIN(Support shape mass and density settings)
+
+        protected virtual float ResolveDensity() => 0f;
+
+        protected virtual void ApplyShapeDensity() { }
+
+        //CCX_MOD END(Support shape mass and density settings)
     }
 }

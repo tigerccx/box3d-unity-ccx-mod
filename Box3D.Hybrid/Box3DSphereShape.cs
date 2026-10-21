@@ -7,7 +7,9 @@ namespace Box3D.Hybrid
     /// largest axis (same limitation as Unity).</summary>
     [Icon("Packages/com.suvitruf.box3d/Box3D.Hybrid.Editor/Icons/Box3DSphereShape.png")]
     [AddComponentMenu("Box3D/Shapes/Sphere Shape")]
-    public class Box3DSphereShape : Box3DShape
+    //CCX_MOD BEGIN(Support shape mass and density settings)
+    public class Box3DSphereShape : Box3DDynamicBodyShape
+    //CCX_MOD END(Support shape mass and density settings)
     {
         [SerializeField, Min(0f), Tooltip("Sphere radius in local units.")]
         private float Radius = 0.5f;
@@ -53,5 +55,14 @@ namespace Box3D.Hybrid
             float radius = Radius * math.cmax(math.abs((float3)transform.lossyScale));
             Gizmos.DrawWireSphere((Vector3)ScaledCenter, radius);
         }
+        //CCX_MOD BEGIN(Support shape mass and density settings)
+
+        public override float CalculateVolume()
+        {
+            float r = Radius * math.cmax(math.abs(VolumeScale));
+            return 4f / 3f * math.PI * r * r * r;
+        }
+
+        //CCX_MOD END(Support shape mass and density settings)
     }
 }
